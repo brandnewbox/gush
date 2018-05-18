@@ -116,12 +116,12 @@ module Gush
 
       deps_after = [*opts[:after]]
       deps_after.each do |dep|
-        @dependencies << {from: dep.to_s, to: node.name.to_s }
+        @dependencies << {from: dep.to_s, to: node.class.to_s }
       end
 
       deps_before = [*opts[:before]]
       deps_before.each do |dep|
-        @dependencies << {from: node.name.to_s, to: dep.to_s }
+        @dependencies << {from: node.class.to_s, to: dep.to_s }
       end
 
       node.name
