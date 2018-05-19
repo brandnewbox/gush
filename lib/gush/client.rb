@@ -71,13 +71,14 @@ module Gush
       id
     end
 
-    def all_workflows
-      connection_pool.with do |redis|
+    def all_workflows(limit=nil, offset=0)
+      raw_workflows = connection_pool.with do |redis|
         redis.scan_each(match: "gush.workflows.*").map do |key|
-          id = key.sub("gush.workflows.", "")
-          find_workflow(id)
+          Gush::JSON.decode(redis.get(key), symbolize_keys: true)
         end
       end
+      limit ||= raw_workflows.size
+      raw_workflows.sort_by { |w| -w[:created_at] }[offset, limit].map { |w| find_workflow(w[:id]) }
     end
 
     def find_workflow(id)

@@ -2,7 +2,7 @@ require 'securerandom'
 
 module Gush
   class Workflow
-    attr_accessor :id, :jobs, :stopped, :persisted, :arguments
+    attr_accessor :id, :jobs, :stopped, :persisted, :created_at, :arguments
 
     def initialize(*args)
       @id = id
@@ -21,6 +21,7 @@ module Gush
 
     def self.create(*args)
       flow = new(*args)
+      flow.created_at = Time.now.to_i
       flow.save
       flow
     end
@@ -175,7 +176,8 @@ module Gush
         status: status,
         stopped: stopped,
         started_at: started_at,
-        finished_at: finished_at
+        finished_at: finished_at,
+        created_at: created_at
       }
     end
 
