@@ -193,6 +193,15 @@ module Gush
       @id ||= client.next_free_workflow_id
     end
 
+    def clear_job_children!(parent_job)
+      return if parent_job.outgoing.empty?
+      parent_job.outgoing.each do |job_name|
+        job = find_job(job_name)
+        job.clear!
+        clear_job_children!(job)
+      end
+    end
+
     private
 
     def setup

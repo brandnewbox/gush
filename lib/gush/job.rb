@@ -59,6 +59,13 @@ module Gush
       @finished_at = @failed_at = current_timestamp
     end
 
+    def clear!
+      @enqueued_at = nil
+      @started_at = nil
+      @finished_at = nil
+      @failed_at = nil
+    end
+
     def enqueued?
       !enqueued_at.nil?
     end

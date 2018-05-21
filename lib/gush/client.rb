@@ -171,6 +171,17 @@ module Gush
       Gush::Worker.set(queue: configuration.namespace).perform_later(*[workflow_id, job.name])
     end
 
+    # clear the branch starting from given node and restart the workflow
+    def restart_workflow(workflow_id, job_name)
+      workflow = find_workflow(workflow_id)
+      workflow.mark_as_started
+      initial_job = workflow.find_job(job_name)
+      initial_job.enqueue!
+      workflow.clear_job_children!(initial_job)
+      persist_workflow(workflow)
+      Gush::Worker.set(queue: configuration.namespace).perform_later(*[workflow_id, initial_job.name])
+    end
+
     private
 
     def workflow_from_hash(hash, nodes = [])
@@ -178,6 +189,7 @@ module Gush
       flow.jobs = []
       flow.stopped = hash.fetch(:stopped, false)
       flow.id = hash[:id]
+      flow.created_at = hash[:created_at]
 
       flow.jobs = nodes.map do |node|
         Gush::Job.from_hash(node)
