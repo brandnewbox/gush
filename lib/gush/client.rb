@@ -171,7 +171,7 @@ module Gush
       Gush::Worker.set(queue: configuration.namespace).perform_later(*[workflow_id, job.name])
     end
 
-    # clear the branch starting from given node and restart the workflow
+    # clear the subtree starting from given node and restart the workflow
     def restart_workflow(workflow_id, job_name)
       workflow = find_workflow(workflow_id)
       workflow.mark_as_started

@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'timecop'
 
 describe Gush::Client do
   let(:client) do
@@ -100,7 +101,7 @@ describe Gush::Client do
 
       client.expire_workflow(workflow, -1)
 
-      # => TODO - I believe fakeredis does not handle TTL the same.   
+      # => TODO - I believe fakeredis does not handle TTL the same.
     end
   end
 
@@ -115,10 +116,25 @@ describe Gush::Client do
   end
 
   describe "#all_workflows" do
-    it "returns all registered workflows" do
-      workflow = TestWorkflow.create
-      workflows = client.all_workflows
-      expect(workflows.map(&:id)).to eq([workflow.id])
+    let(:workflows) { [] }
+    before do
+      (1..5).each do |i|
+        Timecop.freeze(Date.today + 1)
+        workflows << TestWorkflow.create
+      end
+    end
+
+    context "default args" do
+      it "returns proper workflows" do
+        expect(client.all_workflows.map(&:id)).to eq(workflows.sort_by { |w| -w.created_at }.map(&:id))
+      end
+    end
+
+    context "limit and offset set" do
+      it "returns proper workflows" do
+        expect(client.all_workflows(2, 2).map(&:id)).to eq([workflows[2], workflows[1]].map(&:id))
+        expect(client.all_workflows(2, 4).map(&:id)).to eq([workflows[0]].map(&:id))
+      end
     end
   end
 
@@ -134,5 +150,22 @@ describe Gush::Client do
       workflow = client.find_workflow(workflow.id)
       expect(workflow.stopped?).to be false
     }.not_to raise_error
+  end
+
+  describe "#restart_workflow" do
+    it "clears the subtree of jobs and restarts parent job" do
+      workflow = TestWorkflow.create
+      client.start_workflow(workflow)
+      5.times { perform_one }
+      expect(workflow.reload.finished?).to be(true)
+      client.restart_workflow(workflow.id, 'FetchFirstJob')
+      workflow.reload
+      expect(workflow.find_job('Prepare').as_json).to include(enqueued_at: an_instance_of(Integer), started_at: an_instance_of(Integer), finished_at: an_instance_of(Integer), failed_at: nil)
+      expect(workflow.find_job('FetchSecondJob').as_json).to include(enqueued_at: an_instance_of(Integer), started_at: an_instance_of(Integer), finished_at: an_instance_of(Integer), failed_at: nil)
+      expect(workflow.find_job('FetchFirstJob').as_json).to include(enqueued_at: an_instance_of(Integer), started_at: nil, finished_at: nil, failed_at: nil)
+      expect(workflow.find_job('PersistFirstJob').as_json).to include(enqueued_at: nil, started_at: nil, finished_at: nil, failed_at: nil)
+      expect(workflow.find_job('NormalizeJob').as_json).to include(enqueued_at: nil, started_at: nil, finished_at: nil, failed_at: nil)
+      expect(ActiveJob::Base.queue_adapter.enqueued_jobs.size).to eq(1)
+    end
   end
 end
