@@ -101,7 +101,8 @@ describe Gush::Workflow do
           "started_at" => nil,
           "finished_at" => nil,
           "stopped" => false,
-          "arguments" => ["arg1", "arg2"]
+          "arguments" => ["arg1", "arg2"],
+          "created_at" => an_instance_of(Integer)
       }
       expect(result).to match(expected)
     end

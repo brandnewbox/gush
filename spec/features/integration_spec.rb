@@ -128,22 +128,27 @@ describe "Workflows" do
     # One time when persisting, second time when reloading in the spec
     expect(INTERNAL_CONFIGURE_SPY).to receive(:some_method).exactly(2).times
 
-    class SimpleJob < Gush::Job
-      def perform
-        INTERNAL_SPY.some_method
-      end
-    end
-
     class GiganticWorkflow < Gush::Workflow
       def configure
         INTERNAL_CONFIGURE_SPY.some_method
 
-        10.times do
-          main = run(SimpleJob)
-          10.times do
-            run(SimpleJob, after: main)
+        10.times do |i|
+          main = build_job_class(i.to_s)
+          run(main)
+          10.times do |j|
+            run(build_job_class("#{i}#{j}"), after: main)
           end
         end
+      end
+
+      def build_job_class(id)
+        class_name = "SimpleJob#{id}"
+        return self.class.const_get(class_name) if self.class.const_defined?(class_name)
+        self.class.const_set(class_name, Class.new(Gush::Job) do
+          def perform
+            INTERNAL_SPY.some_method
+          end
+        end)
       end
     end
 
