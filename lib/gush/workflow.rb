@@ -71,8 +71,8 @@ module Gush
         from = find_job(dependency[:from])
         to   = find_job(dependency[:to])
 
-        to.incoming << dependency[:from]
-        from.outgoing << dependency[:to]
+        to.incoming << from.name
+        from.outgoing << to.name
       end
     end
 
