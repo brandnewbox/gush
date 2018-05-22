@@ -167,8 +167,7 @@ module Gush
     def enqueue_job(workflow_id, job)
       job.enqueue!
       persist_job(workflow_id, job)
-
-      Gush::Worker.set(queue: configuration.namespace).perform_later(*[workflow_id, job.name])
+      init_worker(workflow_id, job)
     end
 
     # clear the subtree starting from given node and restart the workflow
@@ -179,7 +178,7 @@ module Gush
       initial_job.enqueue!
       workflow.clear_job_children!(initial_job)
       persist_workflow(workflow)
-      Gush::Worker.set(queue: configuration.namespace).perform_later(*[workflow_id, initial_job.name])
+      init_worker(workflow_id, initial_job)
     end
 
     private
@@ -196,6 +195,10 @@ module Gush
       end
 
       flow
+    end
+
+    def init_worker(workflow_id, job)
+      Gush::Worker.set(queue: job.class.queue || configuration.namespace).perform_later(workflow_id, job.name)
     end
 
     def build_redis
