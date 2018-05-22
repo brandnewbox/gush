@@ -28,6 +28,30 @@ describe Gush::Worker do
           subject.perform(workflow.id, "FailingJob")
         end.to raise_error(NameError)
         expect(client.find_job(workflow.id, "FailingJob")).to be_failed
+        expect(client.find_job(workflow.id, "FailingJob")).to_not be_failed_softly
+      end
+    end
+
+    context "when job softly fails" do
+      it "should mark it as failed softly" do
+        class FailingJob < Gush::Job
+          def perform
+            raise Gush::Job::SoftFail
+          end
+        end
+
+        class FailingWorkflow < Gush::Workflow
+          def configure
+            run FailingJob
+          end
+        end
+
+        workflow = FailingWorkflow.create
+        expect do
+          subject.perform(workflow.id, "FailingJob")
+        end.to_not raise_error
+        expect(client.find_job(workflow.id, "FailingJob")).to be_failed
+        expect(client.find_job(workflow.id, "FailingJob")).to be_failed_softly
       end
     end
 

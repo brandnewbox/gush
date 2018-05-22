@@ -1,7 +1,9 @@
 module Gush
   class Job
+    class SoftFail < StandardError; end
+
     attr_accessor :workflow_id, :incoming, :outgoing, :params,
-      :finished_at, :failed_at, :started_at, :enqueued_at, :payloads, :klass
+      :finished_at, :failed_at, :started_at, :enqueued_at, :payloads, :klass, :soft_fail
     attr_reader :name, :output_payload, :params
 
     def initialize(opts = {})
@@ -21,7 +23,8 @@ module Gush
         failed_at: failed_at,
         params: params,
         workflow_id: workflow_id,
-        output_payload: output_payload
+        output_payload: output_payload,
+        soft_fail: soft_fail
       }
     end
 
@@ -49,14 +52,16 @@ module Gush
       @started_at = nil
       @finished_at = nil
       @failed_at = nil
+      @soft_fail = nil
     end
 
     def finish!
       @finished_at = current_timestamp
     end
 
-    def fail!
+    def fail!(soft_fail=false)
       @finished_at = @failed_at = current_timestamp
+      @soft_fail = soft_fail
     end
 
     def clear!
@@ -64,6 +69,7 @@ module Gush
       @started_at = nil
       @finished_at = nil
       @failed_at = nil
+      @soft_fail = nil
     end
 
     def enqueued?
@@ -76,6 +82,10 @@ module Gush
 
     def failed?
       !failed_at.nil?
+    end
+
+    def failed_softly?
+      failed? && soft_fail
     end
 
     def succeeded?
@@ -126,6 +136,7 @@ module Gush
       @klass          = opts[:klass]
       @output_payload = opts[:output_payload]
       @workflow_id    = opts[:workflow_id]
+      @soft_fail      = opts[:soft_fail]
     end
   end
 end

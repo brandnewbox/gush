@@ -12,9 +12,11 @@ module Gush
       mark_as_started
       begin
         job.perform
-      rescue StandardError => error
+      rescue Job::SoftFail
+        mark_as_failed(true)
+      rescue StandardError
         mark_as_failed
-        raise error
+        raise
       else
         mark_as_finished
         enqueue_outgoing_jobs
@@ -50,8 +52,8 @@ module Gush
       client.persist_job(workflow_id, job)
     end
 
-    def mark_as_failed
-      job.fail!
+    def mark_as_failed(soft_fail=false)
+      job.fail!(soft_fail)
       client.persist_job(workflow_id, job)
     end
 
