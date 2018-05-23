@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'timecop'
 
 describe Gush::Worker do
   subject { described_class.new }
@@ -60,6 +61,45 @@ describe Gush::Worker do
         expect(subject).to receive(:mark_as_finished)
 
         subject.perform(workflow.id, "Prepare")
+      end
+    end
+
+    context "when LoopFail is thrown" do
+      before do
+        class FailingJob < Gush::Job
+          def perform
+            raise Gush::Job::LoopFail
+          end
+        end
+
+        class FailingWorkflow < Gush::Workflow
+          def configure
+            run FailingJob, params: { loop_opts: { interval: 10, end_time: (Time.now + 100).to_i } }
+          end
+        end
+      end
+
+      context "when end_time is not exceeded" do
+        it "enqueues the job" do
+          workflow = FailingWorkflow.create
+          expect do
+            subject.perform(workflow.id, "FailingJob")
+          end.to_not raise_error
+          expect(client.find_job(workflow.id, "FailingJob")).to be_enqueued
+          expect(Gush::Worker.jobs.size).to eq(1)
+        end
+      end
+
+      context "when end_time is exceeded" do
+        it "marks the job as failed" do
+          workflow = FailingWorkflow.create
+          Timecop.freeze(Time.now + 200)
+          expect do
+            subject.perform(workflow.id, "FailingJob")
+          end.to_not raise_error
+          expect(client.find_job(workflow.id, "FailingJob")).to be_failed
+          expect(Gush::Worker.jobs.size).to eq(0)
+        end
       end
     end
 

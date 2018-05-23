@@ -164,10 +164,10 @@ module Gush
       end
     end
 
-    def enqueue_job(workflow_id, job)
+    def enqueue_job(workflow_id, job, worker_delay=0)
       job.enqueue!
       persist_job(workflow_id, job)
-      init_worker(workflow_id, job)
+      init_worker(workflow_id, job, worker_delay)
     end
 
     # clear the subtree starting from given node and restart the workflow
@@ -197,12 +197,13 @@ module Gush
       flow
     end
 
-    def init_worker(workflow_id, job)
+    def init_worker(workflow_id, job, delay=0)
       Sidekiq::Client.push(
         {
           'class' => Gush::Worker,
           'args' => [workflow_id, job.name],
-          'queue' => configuration.namespace
+          'queue' => configuration.namespace,
+          'at' => (Time.now + delay).to_i
         }.merge(job.class.sidekiq_options)
       )
     end

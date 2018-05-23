@@ -1,6 +1,8 @@
 module Gush
   class Job
-    class SoftFail < StandardError; end
+    class Error < StandardError; end
+    class SoftFail < Error; end
+    class LoopFail < Error; end
 
     attr_accessor :workflow_id, :incoming, :outgoing, :params,
       :finished_at, :failed_at, :started_at, :enqueued_at, :payloads, :klass, :soft_fail
@@ -116,6 +118,10 @@ module Gush
 
     def has_no_dependencies?
       incoming.empty?
+    end
+
+    def loop_opts
+      params[:loop_opts]
     end
 
     private

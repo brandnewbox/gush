@@ -14,6 +14,9 @@ module Gush
       mark_as_started
       begin
         job.perform
+      rescue Job::LoopFail
+        mark_as_failed and return if Time.now + job.loop_opts[:interval] > Time.at(job.loop_opts[:end_time])
+        client.enqueue_job(workflow_id, job, job.loop_opts[:interval])
       rescue Job::SoftFail
         mark_as_failed(true)
       rescue StandardError
