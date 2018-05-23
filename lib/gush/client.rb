@@ -198,7 +198,13 @@ module Gush
     end
 
     def init_worker(workflow_id, job)
-      Gush::Worker.set(queue: job.class.queue || configuration.namespace).perform_later(workflow_id, job.name)
+      Sidekiq::Client.push(
+        {
+          'class' => Gush::Worker,
+          'args' => [workflow_id, job.name],
+          'queue' => configuration.namespace
+        }.merge(job.class.sidekiq_options)
+      )
     end
 
     def build_redis

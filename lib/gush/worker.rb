@@ -1,7 +1,9 @@
-require 'active_job'
+require 'sidekiq'
 
 module Gush
-  class Worker < ::ActiveJob::Base
+  class Worker
+    include Sidekiq::Worker
+
     def perform(workflow_id, job_id)
       setup_job(workflow_id, job_id)
 

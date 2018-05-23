@@ -42,7 +42,7 @@ describe Gush::Client do
       workflow = TestWorkflow.create
       expect {
         client.start_workflow(workflow)
-      }.to change{ActiveJob::Base.queue_adapter.enqueued_jobs.size}.from(0).to(1)
+      }.to change{Gush::Worker.jobs.size}.from(0).to(1)
     end
 
     it "removes stopped flag when the workflow is started" do
@@ -165,7 +165,7 @@ describe Gush::Client do
       expect(workflow.find_job('FetchFirstJob').as_json).to include(enqueued_at: an_instance_of(Integer), started_at: nil, finished_at: nil, failed_at: nil)
       expect(workflow.find_job('PersistFirstJob').as_json).to include(enqueued_at: nil, started_at: nil, finished_at: nil, failed_at: nil)
       expect(workflow.find_job('NormalizeJob').as_json).to include(enqueued_at: nil, started_at: nil, finished_at: nil, failed_at: nil)
-      expect(ActiveJob::Base.queue_adapter.enqueued_jobs.size).to eq(1)
+      expect(Gush::Worker.jobs.size).to eq(1)
     end
   end
 end

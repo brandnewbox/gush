@@ -6,8 +6,8 @@ module Gush
       :finished_at, :failed_at, :started_at, :enqueued_at, :payloads, :klass, :soft_fail
     attr_reader :name, :output_payload, :params
 
-    def self.queue
-      nil
+    def self.sidekiq_options
+      {}
     end
 
     def initialize(opts = {})

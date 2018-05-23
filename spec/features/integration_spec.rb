@@ -5,9 +5,8 @@ describe "Workflows" do
   context "when all jobs finish successfuly" do
     it "marks workflow as completed" do
       flow = TestWorkflow.create
-      perform_enqueued_jobs do
-        flow.start!
-      end
+      flow.start!
+      Gush::Worker.drain
 
       flow = flow.reload
       expect(flow).to be_finished
@@ -35,7 +34,7 @@ describe "Workflows" do
 
     perform_one
 
-    expect(ActiveJob::Base.queue_adapter.enqueued_jobs).to be_empty
+    expect(Gush::Worker.jobs).to be_empty
   end
 
   it "passes payloads down the workflow" do
