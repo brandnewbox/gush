@@ -32,6 +32,7 @@ module Gush
       else
         mark_as_finished
         enqueue_outgoing_jobs
+        client.restart_workflow(workflow_id, job.params[:clear_job]) if job.params[:clear_job].present?
       end
     end
 
