@@ -204,7 +204,7 @@ module Gush
           'args' => [workflow_id, job.name],
           'queue' => configuration.namespace,
           'at' => (Time.now + delay).to_i
-        }.merge(job.class.sidekiq_options)
+        }.merge(job.class.full_sidekiq_options)
       )
     end
 

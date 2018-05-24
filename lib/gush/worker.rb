@@ -4,6 +4,13 @@ module Gush
   class Worker
     include Sidekiq::Worker
 
+    sidekiq_retries_exhausted do |msg|
+      client = Gush::Client.new
+      workflow_id, job = msg['args'][0], client.find_job(*msg['args'])
+      job.fail!
+      client.persist_job(workflow_id, job)
+    end
+
     def perform(workflow_id, job_id)
       setup_job(workflow_id, job_id)
 
@@ -12,15 +19,15 @@ module Gush
       error = nil
 
       mark_as_started
+      mark_as_failed and return if job.expired?
       begin
         job.perform
       rescue Job::LoopFail
-        mark_as_failed and return if Time.now + job.loop_opts[:interval] > Time.at(job.loop_opts[:end_time])
         client.enqueue_job(workflow_id, job, job.loop_opts[:interval])
       rescue Job::SoftFail
         mark_as_failed(true)
       rescue StandardError
-        mark_as_failed
+        job.no_retries? ? mark_as_failed : mark_as_enqueued
         raise
       else
         mark_as_finished
@@ -64,6 +71,11 @@ module Gush
 
     def mark_as_started
       job.start!
+      client.persist_job(workflow_id, job)
+    end
+
+    def mark_as_enqueued
+      job.enqueue!
       client.persist_job(workflow_id, job)
     end
 

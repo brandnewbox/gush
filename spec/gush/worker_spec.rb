@@ -10,7 +10,7 @@ describe Gush::Worker do
   let!(:client)     { Gush::Client.new }
 
   describe "#perform" do
-    context "when job fails" do
+    context "when job fails (no retries)" do
       it "should mark it as failed" do
         class FailingJob < Gush::Job
           def perform
@@ -30,6 +30,33 @@ describe Gush::Worker do
         end.to raise_error(NameError)
         expect(client.find_job(workflow.id, "FailingJob")).to be_failed
         expect(client.find_job(workflow.id, "FailingJob")).to_not be_failed_softly
+      end
+    end
+
+    context "when job fails (retries not exhausted)" do
+      it "should mark it as failed" do
+        class FailingJob < Gush::Job
+          def self.sidekiq_options
+            { 'retry' => 3 }
+          end
+
+          def perform
+            invalid.code_to_raise.error
+          end
+        end
+
+        class FailingWorkflow < Gush::Workflow
+          def configure
+            run FailingJob
+          end
+        end
+
+        workflow = FailingWorkflow.create
+        expect do
+          subject.perform(workflow.id, "FailingJob")
+        end.to raise_error(NameError)
+        expect(client.find_job(workflow.id, "FailingJob")).to_not be_failed
+        expect(client.find_job(workflow.id, "FailingJob")).to be_enqueued
       end
     end
 
@@ -85,6 +112,7 @@ describe Gush::Worker do
           expect do
             subject.perform(workflow.id, "FailingJob")
           end.to_not raise_error
+          expect(client.find_job(workflow.id, "FailingJob")).to_not be_failed
           expect(client.find_job(workflow.id, "FailingJob")).to be_enqueued
           expect(Gush::Worker.jobs.size).to eq(1)
         end

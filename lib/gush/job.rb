@@ -12,6 +12,14 @@ module Gush
       {}
     end
 
+    def self.default_sidekiq_options
+      { 'retry' => false }
+    end
+
+    def self.full_sidekiq_options
+      default_sidekiq_options.merge(sidekiq_options)
+    end
+
     def initialize(opts = {})
       options = opts.dup
       assign_variables(options)
@@ -122,6 +130,15 @@ module Gush
 
     def loop_opts
       params[:loop_opts]
+    end
+
+    def expired?
+      return false if loop_opts.nil?
+      Time.now > Time.at(loop_opts[:end_time])
+    end
+
+    def no_retries?
+      !self.class.full_sidekiq_options['retry']
     end
 
     private
