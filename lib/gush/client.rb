@@ -198,13 +198,14 @@ module Gush
     end
 
     def init_worker(workflow_id, job, delay=0)
+      options = {
+        'class' => Gush::Worker,
+        'args' => [workflow_id, job.name],
+        'queue' => configuration.namespace
+      }
+      options['at'] = (Time.now + delay).to_i if delay > 0
       Sidekiq::Client.push(
-        {
-          'class' => Gush::Worker,
-          'args' => [workflow_id, job.name],
-          'queue' => configuration.namespace,
-          'at' => (Time.now + delay).to_i
-        }.merge(job.class.full_sidekiq_options)
+        options.merge(job.class.full_sidekiq_options)
       )
     end
 
